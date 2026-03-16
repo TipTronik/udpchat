@@ -71,8 +71,8 @@
             turnServer = input;
 
         using var client = new PurePeerClient(peerName, 
-            //"170.168.100.38", 
-            "127.0.0.1",
+            "170.168.100.38", 
+            //"127.0.0.1",
             5555);
         
         client.OnLog += (s, msg) => { /* уже выводится */ };
