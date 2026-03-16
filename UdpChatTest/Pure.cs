@@ -53,8 +53,10 @@ public class PeerMessage
     public string? Target { get; set; }
     public string? Data { get; set; }
     //public IPEndPoint? ExternalEndpoint { get; set; }
-    public string Ip { get; set; }
-    public int Port { get; set; }
+    //public string Ip { get; set; }
+    //public int Port { get; set; }
+    public string? ExternalEndpoint { get; set; }
+    public string? InternalEndpoint { get; set; }
     public NatType? NatType { get; set; }
     public int Sequence { get; set; }
 }

@@ -70,7 +70,10 @@
         if (!string.IsNullOrWhiteSpace(input))
             turnServer = input;
 
-        using var client = new DebuggablePeerClient(peerName, "170.168.100.38", 5555);
+        using var client = new PurePeerClient(peerName, 
+            //"170.168.100.38", 
+            "127.0.0.1",
+            5555);
         
         client.OnLog += (s, msg) => { /* уже выводится */ };
         client.OnMessageReceived += (s, e) => 

@@ -18,7 +18,7 @@ public class PureRendezvousServer
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         Console.WriteLine($"[Server] Started on port 5555");
-        
+
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -46,15 +46,18 @@ public class PureRendezvousServer
                     _peers[message.Sender] = new PeerInfo
                     {
                         PeerName = message.Sender,
-                        ReportedEndpoint = new IPEndPoint(IPAddress.Parse(message.Ip), message.Port) ?? sender,//message.ExternalEndpoint ?? sender,
+                        ReportedEndpoint = message.InternalEndpoint != null
+                            ? IPEndPoint.Parse(message.InternalEndpoint)
+                            : sender,
                         NatType = message.NatType ?? NatType.Unknown,
                         LastSeen = DateTime.UtcNow
                     };
                 }
+
                 Console.WriteLine($"[Server] Registered {message.Sender} at {sender}");
                 await SendAsync(new PeerMessage { Type = "REGISTERED", Sender = "server" }, sender);
                 break;
-                
+
             case "GET_PEER":
                 lock (_lock)
                 {
@@ -64,35 +67,32 @@ public class PureRendezvousServer
                         {
                             Type = "PEER_INFO",
                             Sender = peer.PeerName,
-                            //ExternalEndpoint = peer.ReportedEndpoint,
-                            Ip = peer.ReportedEndpoint.Address.ToString(),
-                            Port = peer.ReportedEndpoint.Port,
+                            ExternalEndpoint = peer.ReportedEndpoint?.ToString(),
                             NatType = peer.NatType
                         };
                         SendAsync(response, sender);
-                        
+
                         // Уведомляем целевой пир
                         var notify = new PeerMessage
                         {
                             Type = "PEER_INFO",
                             Sender = message.Sender,
-                            //ExternalEndpoint = sender,
-                            Ip = sender.Address.ToString(),
-                            Port = sender.Port,
+                            ExternalEndpoint = sender.ToString(),
                             NatType = message.NatType
                         };
                         SendAsync(notify, peer.ReportedEndpoint!);
                     }
                     else
                     {
-                        SendAsync(new PeerMessage 
-                        { 
-                            Type = "ERROR", 
-                            Sender = "server", 
-                            Data = $"Peer {message.Target} not found" 
+                        SendAsync(new PeerMessage
+                        {
+                            Type = "ERROR",
+                            Sender = "server",
+                            Data = $"Peer {message.Target} not found"
                         }, sender);
                     }
                 }
+
                 break;
         }
     }

@@ -7,7 +7,7 @@ using UdpHolePunching.Pure;
 public class PurePeerClient : IDisposable
 {
     private readonly UdpClient _udpClient;
-    protected readonly string _peerName;
+    private protected string _peerName;
     private readonly IPEndPoint _rendezvousEndpoint;
     private CancellationTokenSource _cts = new();
     private bool _isRunning;
@@ -27,7 +27,7 @@ public class PurePeerClient : IDisposable
     public event EventHandler<string>? OnLog;
     public event EventHandler<(string Peer, string Message)>? OnMessageReceived;
 
-    public PurePeerClient(string peerName, string rendezvousHost = "127.0.0.1", int rendezvousPort = 5555)
+    public PurePeerClient(string peerName, string rendezvousHost = "localhost", int rendezvousPort = 5555)
     {
         _peerName = peerName;
         _rendezvousEndpoint = new IPEndPoint(
@@ -178,9 +178,7 @@ public class PurePeerClient : IDisposable
         {
             Type = "REGISTER",
             Sender = _peerName,
-            //ExternalEndpoint = _publicEndpoint,
-            Ip = _publicEndpoint.Address.ToString(),
-            Port = _publicEndpoint.Port,
+            ExternalEndpoint = _publicEndpoint?.ToString(),
             NatType = _localNatType
         };
         
@@ -285,8 +283,10 @@ public class PurePeerClient : IDisposable
 
     private async Task HandlePeerInfoAsync(PeerMessage message)
     {
-        var peerEndpoint = new IPEndPoint(IPAddress.Parse(message.Ip), message.Port) ?? 
-                           new IPEndPoint(IPAddress.Parse(message.Data!), 0);
+        var peerEndpoint = message.ExternalEndpoint != null ?
+            IPEndPoint.Parse(message.ExternalEndpoint) :
+            //message.ExternalEndpoint ?? 
+            new IPEndPoint(IPAddress.Parse(message.Data!), 0);
         
         Log($"Got peer {message.Sender} info: {peerEndpoint}");
         
@@ -328,9 +328,17 @@ public class PurePeerClient : IDisposable
 
         // Стратегия 2: Classic hole punching
         Log("Strategy 2: Classic hole punching");
-        for (int i = 0; i < 50; i++)
+        for (int i = 0; i < 10; i++)
         {
-            byte[] punchData = Encoding.UTF8.GetBytes($"PUNCH|{_peerName}|{i}");
+            var message = new PeerMessage()
+            {
+                Type = "PUNCH",
+                Sender = _peerName,
+                Data = i.ToString()
+            };
+            var json = JsonSerializer.Serialize(message);
+            
+            byte[] punchData = Encoding.UTF8.GetBytes(json);
             await _udpClient.SendAsync(punchData, punchData.Length, peer.ReportedEndpoint!);
             await Task.Delay(100);
         }
