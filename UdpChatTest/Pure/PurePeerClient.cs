@@ -95,6 +95,9 @@ public class PurePeerClient : IDisposable
             
             testClient.Close();
             
+            Console.WriteLine(beforeEndpoint?.ToString() ?? "null");
+            Console.WriteLine(afterEndpoint?.ToString() ?? "null");
+            
             // Простое определение: если порт изменился - Symmetric
             if (beforeEndpoint.Port != afterEndpoint.Port)
             {
@@ -110,7 +113,7 @@ public class PurePeerClient : IDisposable
         catch (Exception ex)
         {
             Log($"❌ NAT detection failed: {ex.Message}");
-            _localNatType = NatType.Unknown;
+            _localNatType = NatType.Symmetric;
         }
     }
 
@@ -328,7 +331,8 @@ public class PurePeerClient : IDisposable
 
         // Стратегия 2: Classic hole punching
         Log("Strategy 2: Classic hole punching");
-        for (int i = 0; i < 10; i++)
+        Log(peer.ReportedEndpoint.ToString());
+        for (int i = 0; i < 50; i++)
         {
             var message = new PeerMessage()
             {
@@ -340,7 +344,7 @@ public class PurePeerClient : IDisposable
             
             byte[] punchData = Encoding.UTF8.GetBytes(json);
             await _udpClient.SendAsync(punchData, punchData.Length, peer.ReportedEndpoint!);
-            await Task.Delay(100);
+            await Task.Delay(10);
         }
 
         // Стратегия 3: Port scanning для symmetric NAT
@@ -349,7 +353,7 @@ public class PurePeerClient : IDisposable
             Log("Strategy 3: Port scanning for symmetric NAT");
             var basePort = peer.ReportedEndpoint!.Port;
             
-            for (int offset = -10; offset <= 10; offset++)
+            for (int offset = -50; offset <= 50; offset++)
             {
                 if (offset == 0) continue;
                 
@@ -361,7 +365,7 @@ public class PurePeerClient : IDisposable
                 await _udpClient.SendAsync(scanData, scanData.Length, scanEndpoint);
                 
                 if (offset % 5 == 0)
-                    await Task.Delay(50);
+                    await Task.Delay(10);
             }
         }
 
@@ -396,6 +400,7 @@ public class PurePeerClient : IDisposable
         // Пробуем прямой endpoint
         if (peer.DirectEndpoint != null)
         {
+            Log($"try direct {peer.DirectEndpoint}");
             await _udpClient.SendAsync(data, data.Length, peer.DirectEndpoint);
             return;
         }
@@ -403,6 +408,7 @@ public class PurePeerClient : IDisposable
         // Пробуем reported endpoint
         if (peer.ReportedEndpoint != null)
         {
+            Log($"try direct {peer.ReportedEndpoint}");
             await _udpClient.SendAsync(data, data.Length, peer.ReportedEndpoint);
             return;
         }
